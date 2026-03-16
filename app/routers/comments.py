@@ -26,9 +26,15 @@ def _comment_reaction_counts(db: Session, comment_ids: list[int]) -> dict[int, d
     return {row.target_id: {"likes": int(row.likes or 0), "dislikes": int(row.dislikes or 0)} for row in rows}
 
 
-def _build_tree(comments: list[Comment], counts: dict[int, dict[str, int]], user_reactions: dict[int, int]) -> List[schemas.CommentRead]:
+def _build_tree(
+    comments: list[Comment],
+    counts: dict[int, dict[str, int]],
+    user_reactions: dict[int, int],
+    content_overrides: Optional[dict[int, str]] = None,
+) -> List[schemas.CommentRead]:
     by_id: Dict[int, schemas.CommentRead] = {}
     roots: List[schemas.CommentRead] = []
+    overrides = content_overrides or {}
 
     for c in comments:
         count = counts.get(c.id, {})
@@ -37,7 +43,7 @@ def _build_tree(comments: list[Comment], counts: dict[int, dict[str, int]], user
             post_id=c.post_id,
             author=c.author,
             parent_id=c.parent_id,
-            content=c.content,
+            content=overrides.get(c.id, c.content),
             is_visible=c.is_visible,
             created_at=c.created_at,
             like_count=count.get("likes", 0),
@@ -56,6 +62,32 @@ def _build_tree(comments: list[Comment], counts: dict[int, dict[str, int]], user
     return roots
 
 
+def _filter_public_comments(comments: list[Comment]) -> list[Comment]:
+    by_id = {c.id: c for c in comments}
+    deleted_ids = {
+        c.id for c in comments if c.is_visible == -1 or c.deleted_at is not None
+    }
+    if not deleted_ids:
+        return comments
+
+    def has_deleted_ancestor(comment: Comment) -> bool:
+        parent_id = comment.parent_id
+        while parent_id:
+            if parent_id in deleted_ids:
+                return True
+            parent = by_id.get(parent_id)
+            if not parent:
+                break
+            parent_id = parent.parent_id
+        return False
+
+    return [
+        c
+        for c in comments
+        if c.id not in deleted_ids and not has_deleted_ancestor(c)
+    ]
+
+
 @router.get("/{post_id}/comments", response_model=List[schemas.CommentRead])
 def list_comments(post_id: int, db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_optional_current_user)):
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at == None).first()
@@ -65,14 +97,16 @@ def list_comments(post_id: int, db: Session = Depends(get_db), current_user: Opt
     # 基础查询：该文章下的所有评论
     query = db.query(Comment).filter(Comment.post_id == post_id)
     
-    # 过滤：仅显示可见评论且未删除
     # 如果是管理员，可以显示所有评论（包括不可见的和软删除的）来方便管理
     from ..deps import ADMIN_EMAILS
     is_admin = current_user and current_user.email in ADMIN_EMAILS
-    if not is_admin:
-        query = query.filter(Comment.is_visible == 1, Comment.deleted_at == None)
 
     comments = query.order_by(Comment.created_at.asc()).all()
+    content_overrides = None
+    if not is_admin:
+        comments = _filter_public_comments(comments)
+        content_overrides = {c.id: "" for c in comments if c.is_visible == 0}
+
     comment_ids = [c.id for c in comments]
     counts = _comment_reaction_counts(db, comment_ids)
     
@@ -86,7 +120,7 @@ def list_comments(post_id: int, db: Session = Depends(get_db), current_user: Opt
         for r in user_reaction_rows:
             user_reactions[r.target_id] = r.value
 
-    return _build_tree(comments, counts, user_reactions)
+    return _build_tree(comments, counts, user_reactions, content_overrides)
 
 
 @router.delete("/comments/{comment_id}")

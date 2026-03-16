@@ -416,6 +416,7 @@ def list_comments(
                     author=schemas.UserRead.from_orm(comment.author),
                     content=comment.content,
                     created_at=comment.created_at,
+                    is_visible=comment.is_visible,
                 )
             )
         return results
@@ -441,6 +442,7 @@ def delete_comment(
 @router.post("/comments/{comment_id}/toggle_visibility")
 def toggle_comment_visibility(
     comment_id: int,
+    payload: Optional[schemas.AdminCommentVisibilityUpdate] = None,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
@@ -448,7 +450,10 @@ def toggle_comment_visibility(
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
     
-    comment.is_visible = 0 if comment.is_visible == 1 else 1
+    if payload and payload.is_visible in (0, 1):
+        comment.is_visible = payload.is_visible
+    else:
+        comment.is_visible = 0 if comment.is_visible == 1 else 1
     db.commit()
     msg = "评论已隐藏" if comment.is_visible == 0 else "评论已恢复显示"
     return {"ok": True, "is_visible": comment.is_visible, "message": msg}

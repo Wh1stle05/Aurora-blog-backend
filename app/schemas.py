@@ -147,9 +147,14 @@ class AdminCommentRead(BaseModel):
     author: UserRead
     content: str
     created_at: datetime
+    is_visible: int
 
     class Config:
         from_attributes = True
+
+
+class AdminCommentVisibilityUpdate(BaseModel):
+    is_visible: int = Field(ge=0, le=1)
 
 
 class AboutRead(BaseModel):
