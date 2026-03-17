@@ -21,6 +21,7 @@ resend.api_key = RESEND_API_KEY
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    turnstile_token: str | None = None
 
 @router.post("/send-code")
 def send_verification_code(
@@ -121,7 +122,17 @@ def register(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     return user
 
 @router.post("/login")
-def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(
+    payload: LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    request: Request = None,
+):
+    if not payload.turnstile_token:
+        raise HTTPException(status_code=400, detail="缺少人机验证")
+    client_ip = request.client.host if request and request.client else None
+    if not verify_turnstile(payload.turnstile_token, client_ip):
+        raise HTTPException(status_code=403, detail="人机验证失败")
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误")
