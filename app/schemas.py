@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
 
 class SendCodeRequest(BaseModel):
     email: EmailStr
+    turnstile_token: str | None = None
 
 
 class UserRead(BaseModel):

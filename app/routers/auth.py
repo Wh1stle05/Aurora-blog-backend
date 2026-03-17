@@ -1,5 +1,5 @@
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime, timedelta, timezone
@@ -11,6 +11,7 @@ from .. import schemas
 from ..models import User, VerificationCode, UserNicknameHistory, UserEmailHistory, UserAvatarHistory
 from ..deps import get_db, get_current_user
 from ..auth import hash_password, verify_password, create_access_token, JWT_EXPIRES_MINUTES
+from ..utils.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -22,7 +23,16 @@ class LoginRequest(BaseModel):
     password: str
 
 @router.post("/send-code")
-def send_verification_code(payload: schemas.SendCodeRequest, db: Session = Depends(get_db)):
+def send_verification_code(
+    payload: schemas.SendCodeRequest,
+    db: Session = Depends(get_db),
+    request: Request = None,
+):
+    if not payload.turnstile_token:
+        raise HTTPException(status_code=400, detail="缺少人机验证")
+    client_ip = request.client.host if request and request.client else None
+    if not verify_turnstile(payload.turnstile_token, client_ip):
+        raise HTTPException(status_code=403, detail="人机验证失败")
     # 1. 频率限制：检查是否在 60s 内已发送过
     existing = db.query(VerificationCode).filter(VerificationCode.email == payload.email).first()
     if existing:
