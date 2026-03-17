@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from app.models import VerificationCode, User
 
-def test_register_and_login(client, db_session):
+def test_register_and_login(client, db_session, monkeypatch):
     email = "test@example.com"
     code = "123456"
     # Create verification code
@@ -22,7 +22,9 @@ def test_register_and_login(client, db_session):
     assert data["email"] == register_payload["email"]
     assert data["nickname"] == register_payload["nickname"]
 
-    login_payload = {"email": email, "password": "testpass123"}
+    from app.routers import auth as auth_router
+    monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: True)
+    login_payload = {"email": email, "password": "testpass123", "turnstile_token": "ok"}
     res = client.post("/api/auth/login", json=login_payload)
     assert res.status_code == 200
     token = res.json()["access_token"]
