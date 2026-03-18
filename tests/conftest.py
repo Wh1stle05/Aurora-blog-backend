@@ -13,9 +13,9 @@ sys.path.insert(0, "/app")
 # Ensure DB URL is set before importing app modules
 os.environ["DATABASE_URL"] = "sqlite+pysqlite://"
 
-from app import deps
-from app.database import Base
-import app.database as database
+from app.api import deps
+from app.db.base import Base
+import app.db.session as database
 import app.main as main
 
 engine = create_engine(

@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import List, Dict, Optional
 
-from ..deps import get_db, get_current_user, get_optional_current_user
-from ..models import Comment, Post, Reaction, User
-from .. import schemas
+from app.api.deps import get_db, get_current_user, get_optional_current_user
+from app.models import Comment, Post, Reaction, User
+from app import schemas
 
 router = APIRouter(prefix="/api/posts", tags=["comments"])
 
@@ -98,7 +98,7 @@ def list_comments(post_id: int, db: Session = Depends(get_db), current_user: Opt
     query = db.query(Comment).filter(Comment.post_id == post_id)
     
     # 如果是管理员，可以显示所有评论（包括不可见的和软删除的）来方便管理
-    from ..deps import ADMIN_EMAILS
+    from app.api.deps import ADMIN_EMAILS
     is_admin = current_user and current_user.email in ADMIN_EMAILS
 
     comments = query.order_by(Comment.created_at.asc()).all()

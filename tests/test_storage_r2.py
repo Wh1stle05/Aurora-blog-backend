@@ -20,7 +20,7 @@ def test_save_file_uses_r2_when_env_configured(monkeypatch):
     def fake_client(*args, **kwargs):
         return FakeClient()
 
-    import app.utils.storage as storage
+    import app.services.storage as storage
     importlib.reload(storage)
     monkeypatch.setattr(storage, "_build_r2_client", fake_client, raising=False)
 

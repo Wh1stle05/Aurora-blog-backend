@@ -10,7 +10,8 @@ from alembic import context
 # Add the parent directory to sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import Base, DATABASE_URL
+from app.db.base import Base
+from app.db.session import DATABASE_URL
 from app import models  # Ensure all models are imported so Alembic can discover them
 
 # this is the Alembic Config object, which provides

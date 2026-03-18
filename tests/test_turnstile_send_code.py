@@ -7,7 +7,7 @@ def test_send_code_missing_token_returns_400(client):
 
 
 def test_send_code_invalid_token_returns_403(client, monkeypatch):
-    from app.routers import auth as auth_router
+    from app.api.routers import auth as auth_router
 
     def fake_verify(*_args, **_kwargs):
         return False
@@ -18,7 +18,7 @@ def test_send_code_invalid_token_returns_403(client, monkeypatch):
 
 
 def test_send_code_valid_token_returns_200(client, monkeypatch):
-    from app.routers import auth as auth_router
+    from app.api.routers import auth as auth_router
 
     def fake_verify(*_args, **_kwargs):
         return True

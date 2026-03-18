@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 import os
 
-from .database import SessionLocal
-from .models import User
-from .auth import ALGORITHM, JWT_SECRET
+from app.db.session import SessionLocal
+from app.models import User
+from app.core.security import ALGORITHM, JWT_SECRET
 
 ADMIN_EMAILS = {email.strip() for email in os.getenv("ADMIN_EMAILS", "").split(",") if email.strip()}
 

@@ -5,10 +5,10 @@ from typing import List, Optional
 import logging
 import os
 
-from ..deps import get_db, require_admin
-from ..models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision
-from .. import schemas
-from ..utils.storage import save_file
+from app.api.deps import get_db, require_admin
+from app.models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision
+from app import schemas
+from app.services.storage import save_file
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -244,7 +244,7 @@ def toggle_tag_visibility(
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    from ..models import Tag
+    from app.models import Tag
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
@@ -358,7 +358,7 @@ def cleanup_orphaned_images(
 ):
     """清理孤儿图片：删除未关联文章的数据库记录和物理文件"""
     # 1. 清理数据库记录：删除没有对应 Post 的 PostImage
-    from ..models import Post
+    from app.models import Post
     orphans = db.query(PostImage).filter(~PostImage.post_id.in_(db.query(Post.id))).all()
     count_db = len(orphans)
     for orphan in orphans:

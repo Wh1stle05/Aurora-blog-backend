@@ -2,8 +2,8 @@ import pytest
 import uuid
 from sqlalchemy import func
 
-from app import deps
-from app.auth import create_access_token, hash_password
+from app.api import deps
+from app.core.security import create_access_token, hash_password
 from app.models import Comment, Post, User
 
 

@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import traceback
 
-from .database import Base, engine
-from .routers import auth, posts, comments, reactions, contact, admin, about, tags, stats, monitor
+from app.db.base import Base
+from app.db.session import engine
+from app.api.routers import auth, posts, comments, reactions, contact, admin, about, tags, stats, monitor
 
 # --- 1. 环境与日志配置 ---
 IS_VERCEL = "VERCEL" in os.environ

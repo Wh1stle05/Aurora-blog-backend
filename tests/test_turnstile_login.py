@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from app.models import User
-from app.auth import hash_password
+from app.core.security import hash_password
 
 
 def _seed_user(db):
@@ -24,7 +24,7 @@ def test_login_missing_turnstile_returns_400(client, db_session):
 
 
 def test_login_invalid_turnstile_returns_403(client, db_session, monkeypatch):
-    from app.routers import auth as auth_router
+    from app.api.routers import auth as auth_router
     monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: False)
     user = _seed_user(db_session)
     res = client.post(
@@ -35,7 +35,7 @@ def test_login_invalid_turnstile_returns_403(client, db_session, monkeypatch):
 
 
 def test_login_valid_turnstile_returns_200(client, db_session, monkeypatch):
-    from app.routers import auth as auth_router
+    from app.api.routers import auth as auth_router
     monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: True)
     user = _seed_user(db_session)
     res = client.post(

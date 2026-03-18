@@ -4,9 +4,9 @@ from sqlalchemy import func, case, or_
 from typing import List, Optional
 import math
 
-from ..deps import get_db, get_current_user, get_optional_current_user
-from ..models import Post, Comment, Reaction, User
-from .. import schemas
+from app.api.deps import get_db, get_current_user, get_optional_current_user
+from app.models import Post, Comment, Reaction, User
+from app import schemas
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
@@ -175,7 +175,7 @@ def get_post(
         raise HTTPException(status_code=404, detail="Post not found")
     
     # 如果文章不可见，且当前用户不是管理员，返回 404
-    from ..deps import ADMIN_EMAILS
+    from app.api.deps import ADMIN_EMAILS
     is_admin = current_user and current_user.email in ADMIN_EMAILS
     if post.is_visible == 0 and not is_admin:
         raise HTTPException(status_code=404, detail="Post not found")

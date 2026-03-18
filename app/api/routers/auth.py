@@ -7,11 +7,11 @@ import random
 import resend
 import os
 
-from .. import schemas
-from ..models import User, VerificationCode, UserNicknameHistory, UserEmailHistory, UserAvatarHistory
-from ..deps import get_db, get_current_user
-from ..auth import hash_password, verify_password, create_access_token, JWT_EXPIRES_MINUTES
-from ..utils.turnstile import verify_turnstile
+from app import schemas
+from app.models import User, VerificationCode, UserNicknameHistory, UserEmailHistory, UserAvatarHistory
+from app.api.deps import get_db, get_current_user
+from app.core.security import hash_password, verify_password, create_access_token, JWT_EXPIRES_MINUTES
+from app.services.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -170,7 +170,7 @@ from fastapi import UploadFile, File
 import uuid
 import shutil
 
-from ..utils.storage import save_file
+from app.services.storage import save_file
 
 @router.post("/avatar")
 async def upload_avatar(

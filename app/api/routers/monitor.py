@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 
-from ..database import SessionLocal
-from ..models import User, Comment
-from ..deps import get_db
+from app.db.session import SessionLocal
+from app.models import User, Comment
+from app.api.deps import get_db
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
