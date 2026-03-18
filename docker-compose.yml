@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: aurora-db
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: blogpass
+      POSTGRES_DB: blogdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - aurora_pg:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aurora-backend
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql+psycopg://blog:blogpass@db:5432/blogdb
+      - JWT_SECRET=${JWT_SECRET:-supersecret-change-me}
+      - ADMIN_EMAILS=a3165140148@outlook.com
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - RESEND_FROM=${RESEND_FROM:-Aurora Blog <onboarding@resend.dev>}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET=${R2_BUCKET:-}
+      - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  aurora_pg:
+    external: true
+    name: aurora_pg
