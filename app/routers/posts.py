@@ -1,29 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, or_
 from typing import List, Optional
 import math
-import base64
 
 from ..deps import get_db, get_current_user, get_optional_current_user
-from ..models import Post, Comment, Reaction, User, PostImage
+from ..models import Post, Comment, Reaction, User
 from .. import schemas
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
-
-@router.get("/image/{image_id}")
-async def get_post_image(image_id: int, db: Session = Depends(get_db)):
-    """从数据库读取并返回二进制图片内容"""
-    img = db.query(PostImage).filter(PostImage.id == image_id).first()
-    if not img:
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    # 将 Base64 字符串解码回二进制
-    try:
-        binary_data = base64.b64decode(img.data)
-        return Response(content=binary_data, media_type=img.content_type)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to decode image data")
 
 def _reaction_counts(db: Session, target_type: str, target_ids: list[int]) -> dict[int, dict[str, int]]:
     if not target_ids:

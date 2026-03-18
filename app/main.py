@@ -77,7 +77,7 @@ def get_routes():
     """获取所有可用的 API 路由列表"""
     url_list = []
     # 排除不需要展示的内部路由
-    exclude_names = ["root", "get_post_image", "get_routes", "uploads", "monitor_system"]
+    exclude_names = ["root", "get_routes", "uploads", "monitor_system"]
     for route in app.routes:
         if hasattr(route, "path") and not route.path.startswith("/uploads"):
             if hasattr(route, "name") and route.name in exclude_names:

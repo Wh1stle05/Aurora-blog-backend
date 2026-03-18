@@ -4,13 +4,11 @@ from sqlalchemy import func, case
 from typing import List, Optional
 import logging
 import os
-import uuid
-import shutil
-import base64
 
 from ..deps import get_db, require_admin
 from ..models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision
 from .. import schemas
+from ..utils.storage import save_file
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -80,21 +78,17 @@ async def upload_blog_post_full(
     db.add(new_post)
     db.flush() # 获取新生成的 post.id
     
-    # 3. 处理并存储图片附件到数据库
+    # 3. 处理并存储图片附件到数据库（仅存 key）
     stored_images_info = []
     for img in images:
         if not img.content_type.startswith("image/"):
             continue
-        
-        img_data = await img.read()
-        # 存储为 Base64 字符串（数据库友好且方便直接在前端 Data URI 中展示，尽管体积略大）
-        b64_data = base64.b64encode(img_data).decode("utf-8")
-        
+        key = await save_file(img, subfolder="posts", return_key=True)
         db_img = PostImage(
             post_id=new_post.id,
             filename=img.filename,
             content_type=img.content_type,
-            data=b64_data
+            object_key=key
         )
         db.add(db_img)
         db.flush()
@@ -115,8 +109,6 @@ async def upload_blog_post_full(
         "images_attached": len(stored_images_info),
         "attached_details": stored_images_info
     }
-
-from ..utils.storage import save_file
 
 @router.post("/upload")
 async def upload_image(

@@ -23,9 +23,9 @@ def _build_r2_client():
         region_name="auto",
     )
 
-async def save_file(file: UploadFile, subfolder: str = "") -> str:
+async def save_file(file: UploadFile, subfolder: str = "", return_key: bool = False) -> str:
     """
-    保存上传的文件，并返回可访问的 URL。
+    保存上传的文件，并返回可访问的 URL 或存储 key。
     - 如果配置了 R2，则上传至云端（公有桶）。
     - 否则，保存至本地 uploads 目录（适用于本地开发/Docker）。
     """
@@ -45,6 +45,8 @@ async def save_file(file: UploadFile, subfolder: str = "") -> str:
             Body=file_content,
             ContentType=file.content_type or "application/octet-stream",
         )
+        if return_key:
+            return store_path
         return f"{R2_PUBLIC_BASE_URL.rstrip('/')}/{store_path}"
     else:
         # 本地存储模式 (Local/Docker)
@@ -56,8 +58,8 @@ async def save_file(file: UploadFile, subfolder: str = "") -> str:
         with open(local_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # 返回本地访问路径（需配合 FastAPI StaticFiles 挂载）
-        return f"/uploads/{subfolder}/{filename}" if subfolder else f"/uploads/{filename}"
+        local_url = f"/uploads/{subfolder}/{filename}" if subfolder else f"/uploads/{filename}"
+        return local_url if return_key else local_url
 
 def delete_file(path: str):
     """
