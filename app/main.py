@@ -46,13 +46,17 @@ origins = [
     "http://127.0.0.1:3000",
     "http://0.0.0.0:5173",
     # 可以在此处添加您的 Vercel 域名
-    "https://*.vercel.app", 
+    "https://*.vercel.app",
 ]
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS")
+if CORS_ORIGINS:
+    origins = [o.strip() for o in CORS_ORIGINS.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if IS_VERCEL else origins, # 生产环境可以更灵活
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
