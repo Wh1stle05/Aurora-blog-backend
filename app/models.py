@@ -98,7 +98,7 @@ class PostImage(Base):
     post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False, index=True)
     filename = Column(String(255), nullable=False)
     content_type = Column(String(100), nullable=False)
-    data = Column(Text, nullable=False) # 我们可以存储 Base64 字符串或者 LargeBinary。为了方便传输，这里建议用 Text 存 Base64 或者二进制
+    object_key = Column(String(255), nullable=False)
     
     post = relationship("Post", back_populates="images")
 

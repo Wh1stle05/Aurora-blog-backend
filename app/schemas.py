@@ -69,6 +69,7 @@ class PostImageRead(BaseModel):
     id: int
     filename: str
     content_type: str
+    object_key: str
 
     class Config:
         from_attributes = True
