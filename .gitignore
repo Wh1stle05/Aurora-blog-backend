@@ -4,3 +4,4 @@ venv/
 .env
 uploads/
 .pytest_cache/
+.worktrees/
