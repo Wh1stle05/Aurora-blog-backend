@@ -1,18 +1,32 @@
 import os
 import uuid
 import shutil
+import boto3
 from fastapi import UploadFile
-from vercel_blob.blob_store import put
 
 UPLOAD_DIR = "uploads"
 
-# 判断是否使用 Vercel Blob 存储
-USE_BLOB = os.getenv("BLOB_READ_WRITE_TOKEN") is not None
+R2_ENDPOINT = os.getenv("R2_ENDPOINT")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+R2_BUCKET = os.getenv("R2_BUCKET")
+R2_PUBLIC_BASE_URL = os.getenv("R2_PUBLIC_BASE_URL")
+USE_R2 = all([R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE_URL])
+
+
+def _build_r2_client():
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
 
 async def save_file(file: UploadFile, subfolder: str = "") -> str:
     """
     保存上传的文件，并返回可访问的 URL。
-    - 如果配置了 Vercel Blob，则上传至云端。
+    - 如果配置了 R2，则上传至云端（公有桶）。
     - 否则，保存至本地 uploads 目录（适用于本地开发/Docker）。
     """
     ext = os.path.splitext(file.filename)[1]
@@ -21,16 +35,17 @@ async def save_file(file: UploadFile, subfolder: str = "") -> str:
     # 构造存储路径（云端或本地）
     store_path = f"{subfolder}/{filename}" if subfolder else filename
     
-    if USE_BLOB:
-        # Vercel Blob 模式
+    if USE_R2:
         file_content = await file.read()
-        # 重置文件指针，以便后续可能的操作
         await file.seek(0)
-        
-        # 上传到 Vercel Blob
-        # 注意：vercel_blob.put 会返回一个包含 url 的对象
-        blob = put(store_path, file_content)
-        return blob.get("url")
+        client = _build_r2_client()
+        client.put_object(
+            Bucket=R2_BUCKET,
+            Key=store_path,
+            Body=file_content,
+            ContentType=file.content_type or "application/octet-stream",
+        )
+        return f"{R2_PUBLIC_BASE_URL.rstrip('/')}/{store_path}"
     else:
         # 本地存储模式 (Local/Docker)
         local_dir = os.path.join(UPLOAD_DIR, subfolder) if subfolder else UPLOAD_DIR
@@ -49,10 +64,8 @@ def delete_file(path: str):
     删除文件逻辑（可选实现）。
     Vercel Blob 删除目前需要通过 SDK 指定 URL，本地则直接 os.remove。
     """
-    if not USE_BLOB:
-        # 本地模式才真正执行删除
+    if not USE_R2:
         if path.startswith("/uploads/"):
-            # 还原为本地物理路径
             local_path = path.replace("/uploads/", f"{UPLOAD_DIR}/", 1)
             if os.path.exists(local_path):
                 os.remove(local_path)
