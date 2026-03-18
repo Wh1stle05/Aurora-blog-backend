@@ -36,6 +36,18 @@ services:
       - "8000:8000"
     depends_on:
       - db
+  nginx:
+    image: nginx:alpine
+    container_name: aurora-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certbot:/var/www/certbot
+      - ./nginx/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - backend
 
 volumes:
   aurora_pg:
