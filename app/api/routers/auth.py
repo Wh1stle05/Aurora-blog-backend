@@ -1,23 +1,19 @@
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta, timezone
 import random
 import resend
 import os
 
 from app import schemas
-from app.models import User, VerificationCode, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, RefreshToken
+from app.models import User, VerificationCode, UserNicknameHistory, UserEmailHistory, UserAvatarHistory
 from app.api.deps import get_db, get_current_user
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
-    generate_refresh_token,
-    hash_refresh_token,
-    refresh_token_expires_at,
-    REFRESH_TOKEN_EXPIRES_DAYS,
 )
 from app.services.turnstile import verify_turnstile
 
@@ -25,24 +21,6 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 resend.api_key = RESEND_API_KEY
-
-REFRESH_COOKIE_NAME = "refresh_token"
-
-
-def _is_prod() -> bool:
-    return os.getenv("ENV", "dev").lower() == "prod"
-
-
-def _refresh_cookie_kwargs(is_prod: bool) -> dict:
-    kwargs = {
-        "httponly": True,
-        "secure": is_prod,
-        "samesite": "none" if is_prod else "lax",
-        "path": "/api/auth/refresh",
-    }
-    if is_prod:
-        kwargs["domain"] = ".aurorablog.me"
-    return kwargs
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -152,7 +130,6 @@ def register(payload: schemas.UserCreate, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(
     payload: LoginRequest,
-    response: Response,
     db: Session = Depends(get_db),
     request: Request = None,
 ):
@@ -167,26 +144,6 @@ def login(
     
     token = create_access_token(str(user.id))
 
-    raw_refresh = generate_refresh_token()
-    refresh = RefreshToken(
-        user_id=user.id,
-        token_hash=hash_refresh_token(raw_refresh),
-        expires_at=refresh_token_expires_at(),
-        user_agent=request.headers.get("User-Agent") if request else None,
-        ip=request.client.host if request and request.client else None,
-    )
-    db.add(refresh)
-    db.commit()
-
-    is_prod = _is_prod()
-    response.set_cookie(
-        key=REFRESH_COOKIE_NAME,
-        value=raw_refresh,
-        max_age=REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60,
-        expires=REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60,
-        **_refresh_cookie_kwargs(is_prod),
-    )
-    
     return {
         "user": schemas.UserRead.model_validate(user),
         "access_token": token,
@@ -194,80 +151,8 @@ def login(
     }
 
 
-@router.post("/refresh")
-def refresh_token(
-    response: Response,
-    db: Session = Depends(get_db),
-    request: Request = None,
-):
-    raw = request.cookies.get(REFRESH_COOKIE_NAME) if request else None
-    if not raw:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少刷新令牌")
-
-    token_hash = hash_refresh_token(raw)
-    db_token = db.query(RefreshToken).filter(
-        RefreshToken.token_hash == token_hash,
-        RefreshToken.revoked_at == None,
-    ).first()
-    if not db_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="刷新令牌无效")
-
-    now = datetime.now(timezone.utc)
-    db_expires = db_token.expires_at
-    if db_expires and db_expires.tzinfo is None:
-        db_expires = db_expires.replace(tzinfo=timezone.utc)
-    if not db_expires or db_expires < now:
-        db_token.revoked_at = now
-        db.commit()
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="刷新令牌已过期")
-
-    db_token.revoked_at = now
-    db_token.last_used_at = now
-
-    new_raw = generate_refresh_token()
-    new_token = RefreshToken(
-        user_id=db_token.user_id,
-        token_hash=hash_refresh_token(new_raw),
-        expires_at=refresh_token_expires_at(),
-        user_agent=request.headers.get("User-Agent") if request else None,
-        ip=request.client.host if request and request.client else None,
-    )
-    db.add(new_token)
-    db.commit()
-
-    is_prod = _is_prod()
-    response.set_cookie(
-        key=REFRESH_COOKIE_NAME,
-        value=new_raw,
-        max_age=REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60,
-        expires=REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60,
-        **_refresh_cookie_kwargs(is_prod),
-    )
-
-    access_token = create_access_token(str(db_token.user_id))
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
 @router.post("/logout")
-def logout(
-    response: Response,
-    db: Session = Depends(get_db),
-    request: Request = None,
-):
-    raw = request.cookies.get(REFRESH_COOKIE_NAME) if request else None
-    if raw:
-        token_hash = hash_refresh_token(raw)
-        db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-        if db_token:
-            db_token.revoked_at = datetime.now(timezone.utc)
-            db.commit()
-
-    is_prod = _is_prod()
-    response.delete_cookie(
-        key=REFRESH_COOKIE_NAME,
-        path="/api/auth/refresh",
-        domain=".aurorablog.me" if is_prod else None,
-    )
+def logout():
     return {"ok": True}
 
 @router.get("/me", response_model=schemas.UserRead)
@@ -275,8 +160,6 @@ def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 from fastapi import UploadFile, File
-import uuid
-import shutil
 
 from app.services.storage import save_file
 

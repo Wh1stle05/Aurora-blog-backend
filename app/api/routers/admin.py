@@ -107,22 +107,6 @@ async def upload_blog_post_full(
         "attached_details": stored_images_info
     }
 
-@router.post("/upload")
-async def upload_image(
-    file: UploadFile = File(...),
-    _admin: User = Depends(require_admin),
-):
-    # 检查是否是图片
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only images are allowed")
-    
-    # 使用统一存储工具保存图片
-    try:
-        url = await save_file(file, subfolder="posts")
-        return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
-
 @router.get("/users", response_model=List[schemas.AdminUserRead])
 def list_users(
     db: Session = Depends(get_db),

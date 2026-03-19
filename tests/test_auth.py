@@ -1,39 +1,5 @@
-import pytest
 from datetime import datetime, timedelta, timezone
-from app.models import VerificationCode, User
-
-
-def test_refresh_token_model_available():
-    from app.models import RefreshToken
-    assert RefreshToken is not None
-
-
-def test_refresh_token_hashing_is_deterministic(monkeypatch):
-    monkeypatch.setenv("REFRESH_TOKEN_PEPPER", "pepper")
-    from app.core import security
-    token = "rawtoken"
-    a = security.hash_refresh_token(token)
-    b = security.hash_refresh_token(token)
-    assert a == b
-
-
-def test_refresh_flow_rotates_token(client, db_session, monkeypatch):
-    from app.api.routers import auth as auth_router
-    monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: True)
-
-    from app.models import User
-    from app.core.security import hash_password
-    user = User(email="r@e.com", nickname="r", password_hash=hash_password("pass"))
-    db_session.add(user)
-    db_session.commit()
-
-    res = client.post("/api/auth/login", json={"email": "r@e.com", "password": "pass", "turnstile_token": "ok"})
-    assert res.status_code == 200
-    assert "access_token" in res.json()
-
-    res2 = client.post("/api/auth/refresh")
-    assert res2.status_code == 200
-    assert "access_token" in res2.json()
+from app.models import VerificationCode
 
 
 def test_get_current_user_uses_authorization_header_only(client, db_session, monkeypatch):
@@ -107,6 +73,7 @@ def test_register_and_login(client, db_session, monkeypatch):
     assert res.status_code == 200
     token = res.json()["access_token"]
     assert token
+    assert "set-cookie" not in {key.lower() for key in res.headers.keys()}
 
     res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
