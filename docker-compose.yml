@@ -3,7 +3,6 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: aurora-db
     environment:
       POSTGRES_USER: blog
       POSTGRES_PASSWORD: blogpass
@@ -17,7 +16,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: aurora-backend
     volumes:
       - .:/app
     environment:
@@ -41,9 +39,9 @@ services:
       - "8000:8000"
     depends_on:
       - db
+
   nginx:
     image: nginx:alpine
-    container_name: aurora-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -54,7 +52,11 @@ services:
     depends_on:
       - backend
 
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./nginx/certbot:/var/www/certbot
+      - ./nginx/letsencrypt:/etc/letsencrypt
+
 volumes:
   aurora_pg:
-    external: true
-    name: aurora_pg
