@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, or_
 from typing import List, Optional
 import math
 
-from app.api.deps import get_db, get_current_user, get_optional_current_user
+from app.api.deps import get_db, get_optional_current_user
 from app.models import Post, Comment, Reaction, User
 from app import schemas
 
@@ -215,73 +215,3 @@ def get_post(
         user_reaction=user_reaction,
         images=post.images,
     )
-
-
-@router.post("", response_model=schemas.PostRead)
-def create_post(
-    payload: schemas.PostCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    post = Post(
-        title=payload.title, 
-        content=payload.content, 
-        tags=payload.tags,
-        author_id=current_user.id
-    )
-    db.add(post)
-    db.commit()
-    db.refresh(post)
-    return schemas.PostRead(
-        id=post.id,
-        title=post.title,
-        content=post.content,
-        tags=post.tags,
-        view_count=0,
-        created_at=post.created_at,
-        author=post.author,
-        like_count=0,
-        dislike_count=0,
-        comment_count=0,
-    )
-
-
-@router.put("/{post_id}", response_model=schemas.PostRead)
-def update_post(
-    post_id: int,
-    payload: schemas.PostUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    post = db.query(Post).filter(Post.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    if post.author_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
-    if payload.title is not None:
-        post.title = payload.title
-    if payload.content is not None:
-        post.content = payload.content
-    if payload.tags is not None:
-        post.tags = payload.tags
-    db.commit()
-    db.refresh(post)
-    return get_post(post_id, db)
-
-
-@router.delete("/{post_id}")
-def delete_post(
-    post_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    post = db.query(Post).filter(Post.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    if post.author_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
-    
-    # 软删除
-    post.deleted_at = func.now()
-    db.commit()
-    return {"ok": True}
