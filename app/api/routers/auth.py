@@ -83,33 +83,32 @@ def send_verification_code(
     db.commit()
 
     # 4. 调用 Resend 发送邮件
-    print(f"\n[TEST MODE] 验证码已生成！\n邮箱: {payload.email}\n验证码: {code}\n请在终端日志中查看。\n")
+    resend_key = os.getenv("RESEND_API_KEY", "")
+    resend_from = os.getenv("RESEND_FROM", "Aurora Blog <onboarding@resend.dev>")
+    if not resend_key:
+        raise HTTPException(status_code=500, detail="邮件服务未配置")
+    resend.api_key = resend_key
 
     try:
-        if RESEND_API_KEY and RESEND_API_KEY != "re_your_key_here":
-            resend.Emails.send({
-                "from": "Aurora Blog <onboarding@resend.dev>",
-                "to": payload.email,
-                "subject": f"【Aurora Blog】您的注册验证码：{code}",
-                "html": f"""
-                    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                        <h2 style="color: #3b82f6;">欢迎加入 Aurora Blog</h2>
-                        <p>您正在注册账号，您的验证码为：</p>
-                        <div style="font-size: 32px; font-weight: bold; color: #3b82f6; letter-spacing: 5px; margin: 20px 0;">
-                            {code}
-                        </div>
-                        <p style="color: #666; font-size: 14px;">该验证码 10 分钟内有效。如果不是您本人操作，请忽略此邮件。</p>
+        resend.Emails.send({
+            "from": resend_from,
+            "to": payload.email,
+            "subject": f"【Aurora Blog】您的注册验证码：{code}",
+            "html": f"""
+                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                    <h2 style="color: #3b82f6;">欢迎加入 Aurora Blog</h2>
+                    <p>您正在注册账号，您的验证码为：</p>
+                    <div style="font-size: 32px; font-weight: bold; color: #3b82f6; letter-spacing: 5px; margin: 20px 0;">
+                        {code}
                     </div>
-                """
-            })
-        else:
-            print("Skipping Resend email because API key is not configured.")
-            
-        return {"ok": True, "message": "验证码已发送（测试模式：请在服务器日志中查看）"}
-    except Exception as e:
-        print(f"Resend error: {e}")
-        # 在测试模式下，即便邮件发送失败也返回成功，方便从日志中读取验证码
-        return {"ok": True, "message": "邮件发送失败，但验证码已在日志中生成（测试模式）"}
+                    <p style="color: #666; font-size: 14px;">该验证码 10 分钟内有效。如果不是您本人操作，请忽略此邮件。</p>
+                </div>
+            """
+        })
+    except Exception:
+        raise HTTPException(status_code=500, detail="邮件发送失败")
+
+    return {"ok": True, "message": "验证码已发送"}
 
 @router.post("/register", response_model=schemas.UserRead)
 def register(payload: schemas.UserCreate, db: Session = Depends(get_db)):
