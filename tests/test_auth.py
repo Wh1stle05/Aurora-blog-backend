@@ -7,6 +7,15 @@ def test_refresh_token_model_available():
     from app.models import RefreshToken
     assert RefreshToken is not None
 
+
+def test_refresh_token_hashing_is_deterministic(monkeypatch):
+    monkeypatch.setenv("REFRESH_TOKEN_PEPPER", "pepper")
+    from app.core import security
+    token = "rawtoken"
+    a = security.hash_refresh_token(token)
+    b = security.hash_refresh_token(token)
+    assert a == b
+
 def test_register_and_login(client, db_session, monkeypatch):
     email = "test@example.com"
     code = "123456"
