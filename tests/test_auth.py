@@ -2,6 +2,11 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from app.models import VerificationCode, User
 
+
+def test_refresh_token_model_available():
+    from app.models import RefreshToken
+    assert RefreshToken is not None
+
 def test_register_and_login(client, db_session, monkeypatch):
     email = "test@example.com"
     code = "123456"

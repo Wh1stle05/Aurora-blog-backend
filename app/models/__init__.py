@@ -6,6 +6,7 @@ from .contact import Contact
 from .about import AboutPage
 from .verification import VerificationCode
 from .tag import Tag
+from .refresh_token import RefreshToken
 
 __all__ = [
     "User",
@@ -21,4 +22,5 @@ __all__ = [
     "AboutPage",
     "VerificationCode",
     "Tag",
+    "RefreshToken",
 ]
