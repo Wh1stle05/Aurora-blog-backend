@@ -16,6 +16,57 @@ def test_refresh_token_hashing_is_deterministic(monkeypatch):
     b = security.hash_refresh_token(token)
     assert a == b
 
+
+def test_refresh_flow_rotates_token(client, db_session, monkeypatch):
+    from app.api.routers import auth as auth_router
+    monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: True)
+
+    from app.models import User
+    from app.core.security import hash_password
+    user = User(email="r@e.com", nickname="r", password_hash=hash_password("pass"))
+    db_session.add(user)
+    db_session.commit()
+
+    res = client.post("/api/auth/login", json={"email": "r@e.com", "password": "pass", "turnstile_token": "ok"})
+    assert res.status_code == 200
+    assert "access_token" in res.json()
+
+    res2 = client.post("/api/auth/refresh")
+    assert res2.status_code == 200
+    assert "access_token" in res2.json()
+
+
+def test_get_current_user_uses_authorization_header_only(client, db_session, monkeypatch):
+    from app.api.routers import auth as auth_router
+    monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: True)
+
+    from app.models import User
+    from app.core.security import hash_password
+    user = User(email="h@e.com", nickname="h", password_hash=hash_password("pass"))
+    db_session.add(user)
+    db_session.commit()
+
+    res = client.post("/api/auth/login", json={"email": "h@e.com", "password": "pass", "turnstile_token": "ok"})
+    token = res.json()["access_token"]
+
+    res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+
+
+def test_register_rejects_expired_code(client, db_session):
+    email = "expired@example.com"
+    vc = VerificationCode(
+        email=email,
+        code="000000",
+        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+    db_session.add(vc)
+    db_session.commit()
+
+    payload = {"nickname": "AA", "email": email, "password": "pass", "code": "000000"}
+    res = client.post("/api/auth/register", json=payload)
+    assert res.status_code == 400
+
 def test_register_and_login(client, db_session, monkeypatch):
     email = "test@example.com"
     code = "123456"

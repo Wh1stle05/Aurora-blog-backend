@@ -27,14 +27,10 @@ def get_current_user(
         detail="Invalid authentication",
     )
     
-    # Try getting token from Cookie first (Production recommendation)
-    token = request.cookies.get("access_token")
-    
-    # Fallback to Authorization Header (if needed for API testing)
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+    auth_header = request.headers.get("Authorization")
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
 
     if not token:
         raise credentials_exception
@@ -57,11 +53,10 @@ def get_optional_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User | None:
-    token = request.cookies.get("access_token")
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+    auth_header = request.headers.get("Authorization")
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
     
     if not token:
         return None
