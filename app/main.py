@@ -4,7 +4,6 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import traceback
 
 from app.db.base import Base
@@ -13,14 +12,6 @@ from app.api.routers import auth, posts, comments, reactions, contact, admin, ab
 
 # --- 1. 环境与日志配置 ---
 IS_VERCEL = "VERCEL" in os.environ
-UPLOAD_DIR = "uploads"
-
-if not IS_VERCEL:
-    # 仅在非 Vercel 环境下尝试创建本地上传目录
-    AVATAR_DIR = os.path.join(UPLOAD_DIR, "avatars")
-    for d in [UPLOAD_DIR, AVATAR_DIR]:
-        if not os.path.exists(d):
-            os.makedirs(d)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,10 +21,6 @@ logging.basicConfig(
 logger = logging.getLogger("blog-api")
 
 app = FastAPI(title="Blog API")
-
-# 挂载上传目录供访问 (仅在本地开发模式下有效)
-if not IS_VERCEL:
-    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # --- 2. 全局异常处理 ---
 ...
@@ -78,7 +65,7 @@ def get_routes():
     """获取所有可用的 API 路由列表"""
     url_list = []
     # 排除不需要展示的内部路由
-    exclude_names = ["root", "get_routes", "uploads", "monitor_system"]
+    exclude_names = ["root", "get_routes", "monitor_system"]
     for route in app.routes:
         if hasattr(route, "path") and not route.path.startswith("/uploads"):
             if hasattr(route, "name") and route.name in exclude_names:

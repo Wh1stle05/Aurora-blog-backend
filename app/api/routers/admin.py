@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import List, Optional
 import logging
-import os
 
 from app.api.deps import get_db, require_admin
 from app.models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision
@@ -11,8 +10,6 @@ from app import schemas
 from app.services.storage import save_file
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
-
-UPLOAD_DIR = "uploads"
 
 @router.get("/users/{user_id}/history/nickname", response_model=List[schemas.HistoryRead])
 def get_user_nickname_history(
@@ -364,22 +361,8 @@ def cleanup_orphaned_images(
     for orphan in orphans:
         db.delete(orphan)
     
-    # 2. 清理物理文件：删除 uploads 文件夹中不在数据库记录里的文件
-    files_in_dir = os.listdir(UPLOAD_DIR)
-    db_filenames = [r[0] for r in db.query(PostImage.filename).all()]
-    
-    count_files = 0
-    for f in files_in_dir:
-        # 排除系统文件
-        if f.startswith('.'): continue
-        if f not in db_filenames:
-            try:
-                os.remove(os.path.join(UPLOAD_DIR, f))
-                count_files += 1
-            except: pass
-            
     db.commit()
-    return {"ok": True, "database_records_removed": count_db, "physical_files_removed": count_files}
+    return {"ok": True, "database_records_removed": count_db, "physical_files_removed": 0}
 
 @router.get("/comments", response_model=List[schemas.AdminCommentRead])
 def list_comments(

@@ -55,3 +55,9 @@ def test_storage_raises_when_r2_missing(monkeypatch):
     import app.services.storage as storage
     with pytest.raises(RuntimeError):
         importlib.reload(storage)
+
+
+def test_app_does_not_mount_uploads():
+    import app.main as main
+    paths = [r.path for r in main.app.routes if hasattr(r, "path")]
+    assert "/uploads" not in paths
