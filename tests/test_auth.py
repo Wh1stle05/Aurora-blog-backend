@@ -63,7 +63,7 @@ def test_register_rejects_expired_code(client, db_session):
     db_session.add(vc)
     db_session.commit()
 
-    payload = {"nickname": "AA", "email": email, "password": "pass", "code": "000000"}
+    payload = {"nickname": "AA", "email": email, "password": "testpass123", "code": "000000"}
     res = client.post("/api/auth/register", json=payload)
     assert res.status_code == 400
 

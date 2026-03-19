@@ -66,7 +66,10 @@ def send_verification_code(
         # 假设 expires_at 是 10 分钟后，如果现在距离 expires_at 大于 9 分钟，说明是 1 分钟内刚发的
         # 更好的办法是存一个 created_at，但我们可以根据 expires_at 推算
         now = datetime.now(timezone.utc)
-        time_passed = timedelta(minutes=10) - (existing.expires_at - now)
+        existing_expires = existing.expires_at
+        if existing_expires and existing_expires.tzinfo is None:
+            existing_expires = existing_expires.replace(tzinfo=timezone.utc)
+        time_passed = timedelta(minutes=10) - (existing_expires - now)
         if time_passed.total_seconds() < 60:
             raise HTTPException(status_code=429, detail="请稍后再试（60秒内仅限一次）")
 
