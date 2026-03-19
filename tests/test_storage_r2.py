@@ -2,6 +2,7 @@ import asyncio
 import io
 import importlib
 from types import SimpleNamespace
+import pytest
 
 
 def test_save_file_uses_r2_when_env_configured(monkeypatch):
@@ -42,3 +43,15 @@ def test_save_file_uses_r2_when_env_configured(monkeypatch):
     url = asyncio.run(storage.save_file(file, subfolder="avatars"))
     assert called["put"] is True
     assert url.startswith("https://cdn.example.com/avatars/")
+
+
+def test_storage_raises_when_r2_missing(monkeypatch):
+    monkeypatch.delenv("R2_ENDPOINT", raising=False)
+    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("R2_BUCKET", raising=False)
+    monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
+
+    import app.services.storage as storage
+    with pytest.raises(RuntimeError):
+        importlib.reload(storage)

@@ -12,6 +12,11 @@ sys.path.insert(0, "/app")
 
 # Ensure DB URL is set before importing app modules
 os.environ["DATABASE_URL"] = "sqlite+pysqlite://"
+os.environ["R2_ENDPOINT"] = "https://example.r2.cloudflarestorage.com"
+os.environ["R2_ACCESS_KEY_ID"] = "key"
+os.environ["R2_SECRET_ACCESS_KEY"] = "secret"
+os.environ["R2_BUCKET"] = "bucket"
+os.environ["R2_PUBLIC_BASE_URL"] = "https://cdn.example.com"
 
 from app.api import deps
 from app.db.base import Base
