@@ -67,6 +67,19 @@ def test_register_rejects_expired_code(client, db_session):
     res = client.post("/api/auth/register", json=payload)
     assert res.status_code == 400
 
+
+def test_cors_allows_admin_origin(client):
+    res = client.options(
+        "/api/auth/login",
+        headers={
+            "Origin": "https://admin.aurorablog.me",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert res.status_code in (200, 204)
+    assert res.headers.get("access-control-allow-origin") == "https://admin.aurorablog.me"
+    assert res.headers.get("access-control-allow-credentials") == "true"
+
 def test_register_and_login(client, db_session, monkeypatch):
     email = "test@example.com"
     code = "123456"
