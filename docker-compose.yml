@@ -22,8 +22,11 @@ services:
       - .:/app
     environment:
       - DATABASE_URL=postgresql+psycopg://blog:blogpass@db:5432/blogdb
+      - ENV=${ENV:-dev}
       - JWT_SECRET=${JWT_SECRET:-supersecret-change-me}
+      - JWT_EXPIRES_MINUTES=${JWT_EXPIRES_MINUTES:-120}
       - ADMIN_EMAILS=a3165140148@outlook.com
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - RESEND_FROM=${RESEND_FROM:-Aurora Blog <onboarding@resend.dev>}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
@@ -32,6 +35,8 @@ services:
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
       - R2_BUCKET=${R2_BUCKET:-}
       - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL:-}
+      - REFRESH_TOKEN_EXPIRES_DAYS=${REFRESH_TOKEN_EXPIRES_DAYS:-30}
+      - REFRESH_TOKEN_PEPPER=${REFRESH_TOKEN_PEPPER:-change-me}
     ports:
       - "8000:8000"
     depends_on:
