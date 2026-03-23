@@ -8,6 +8,7 @@ from app.api.deps import get_db, require_admin
 from app.models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision
 from app import schemas
 from app.services.storage import save_file
+from app.services.slugs import build_summary, generate_unique_slug
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -43,6 +44,9 @@ async def upload_blog_post_full(
     md_file: UploadFile = File(...),
     images: List[UploadFile] = File([]),
     tags: Optional[str] = Form(None),
+    slug: Optional[str] = Form(None),
+    summary: Optional[str] = Form(None),
+    cover_image: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
@@ -68,7 +72,10 @@ async def upload_blog_post_full(
     # 2. 创建博文记录
     new_post = Post(
         title=title,
+        slug=generate_unique_slug(db, title=title, preferred_slug=slug),
         content=content,
+        summary=summary or build_summary(content),
+        cover_image=cover_image,
         author_id=_admin.id,
         tags=tags # 使用传入的标签，而不是硬编码的 'uploaded'
     )
@@ -103,6 +110,7 @@ async def upload_blog_post_full(
         "ok": True, 
         "post_id": new_post.id,
         "title": title,
+        "slug": new_post.slug,
         "images_attached": len(stored_images_info),
         "attached_details": stored_images_info
     }
@@ -256,13 +264,26 @@ def update_admin_post(
     
     if payload.title is not None:
         post.title = payload.title
+    if payload.slug is not None or payload.title is not None:
+        post.slug = generate_unique_slug(
+            db,
+            title=payload.title or post.title,
+            preferred_slug=payload.slug,
+            current_post_id=post.id,
+        )
     if payload.content is not None:
         post.content = payload.content
+        if payload.summary is None:
+            post.summary = build_summary(payload.content)
     if payload.tags is not None:
         post.tags = payload.tags
     if payload.is_visible is not None:
         post.is_visible = payload.is_visible
-        
+    if payload.summary is not None:
+        post.summary = payload.summary
+    if payload.cover_image is not None:
+        post.cover_image = payload.cover_image
+    
     db.commit()
     db.refresh(post)
     return post

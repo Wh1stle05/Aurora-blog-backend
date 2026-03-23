@@ -8,11 +8,15 @@ class Post(Base):
 
     id = Column(Integer, primary_key=True)
     title = Column(String(200), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
     content = Column(Text, nullable=False)
+    summary = Column(String(300), nullable=True)
+    cover_image = Column(String(255), nullable=True)
     tags = Column(String(255), nullable=True)  # comma separated tags
     view_count = Column(Integer, default=0, nullable=False)
     is_visible = Column(SmallInteger, default=1, nullable=False)  # 1 为可见，0 为隐藏
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
