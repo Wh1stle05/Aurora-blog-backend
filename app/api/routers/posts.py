@@ -7,6 +7,7 @@ import math
 from app.api.deps import get_db, get_optional_current_user
 from app.models import Post, Comment, Reaction, User
 from app import schemas
+from app.services.slugs import build_summary
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
@@ -69,10 +70,14 @@ def list_posts(
             schemas.PostRead(
                 id=post.id,
                 title=post.title,
+                slug=post.slug,
                 content=post.content,
+                summary=post.summary or build_summary(post.content),
+                cover_image=post.cover_image,
                 tags=post.tags,
                 view_count=post.view_count,
                 created_at=post.created_at,
+                updated_at=post.updated_at,
                 author=post.author,
                 like_count=likes,
                 dislike_count=dislikes,
@@ -142,10 +147,13 @@ def list_posts_paginated(
         data.append({
             "id": post.id,
             "title": post.title,
-            "summary": post.content[:150] + "...",
+            "slug": post.slug,
+            "summary": post.summary or build_summary(post.content, limit=150),
+            "cover_image": post.cover_image,
             "tags": post.tags,
             "author": post.author.nickname,
             "created_at": post.created_at,
+            "updated_at": post.updated_at,
             "view_count": post.view_count,
             "like_count": like_count,
             "dislike_count": dislike_count,
@@ -163,14 +171,18 @@ def list_posts_paginated(
     }
 
 
-@router.get("/{post_id}", response_model=schemas.PostRead)
+@router.get("/{post_lookup}", response_model=schemas.PostRead)
 def get_post(
-    post_id: int, 
+    post_lookup: str,
     skip_view: bool = Query(False),
     db: Session = Depends(get_db), 
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-    post = db.query(Post).filter(Post.id == post_id, Post.deleted_at == None).first()
+    query = db.query(Post).filter(Post.deleted_at == None)
+    if post_lookup.isdigit():
+        post = query.filter(Post.id == int(post_lookup)).first()
+    else:
+        post = query.filter(Post.slug == post_lookup).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     
@@ -186,9 +198,9 @@ def get_post(
         db.commit()
         db.refresh(post)
     
-    reaction_map = _reaction_counts(db, "post", [post_id])
+    reaction_map = _reaction_counts(db, "post", [post.id])
     comment_count = (
-        db.query(func.count(Comment.id)).filter(Comment.post_id == post_id).scalar() or 0
+        db.query(func.count(Comment.id)).filter(Comment.post_id == post.id).scalar() or 0
     )
     
     user_reaction = 0
@@ -196,7 +208,7 @@ def get_post(
         reaction = db.query(Reaction).filter(
             Reaction.user_id == current_user.id,
             Reaction.target_type == "post",
-            Reaction.target_id == post_id
+            Reaction.target_id == post.id
         ).first()
         if reaction:
             user_reaction = reaction.value
@@ -204,13 +216,17 @@ def get_post(
     return schemas.PostRead(
         id=post.id,
         title=post.title,
+        slug=post.slug,
         content=post.content,
+        summary=post.summary or build_summary(post.content),
+        cover_image=post.cover_image,
         tags=post.tags,
         view_count=post.view_count,
         created_at=post.created_at,
+        updated_at=post.updated_at,
         author=post.author,
-        like_count=reaction_map.get(post_id, {}).get("likes", 0),
-        dislike_count=reaction_map.get(post_id, {}).get("dislikes", 0),
+        like_count=reaction_map.get(post.id, {}).get("likes", 0),
+        dislike_count=reaction_map.get(post.id, {}).get("dislikes", 0),
         comment_count=int(comment_count),
         user_reaction=user_reaction,
         images=post.images,
