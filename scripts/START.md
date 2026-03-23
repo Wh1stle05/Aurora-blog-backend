@@ -7,7 +7,7 @@ This guide explains how to use `scripts/start.sh` on the production branch.
 `scripts/start.sh` is the one-command startup entry for this backend. It will:
 
 - load variables from `.env`
-- check whether an HTTPS certificate already exists for `DOMAIN`
+- ask Certbot whether a certificate lineage already exists for `DOMAIN`
 - request the first certificate with Certbot if no certificate is present
 - start PostgreSQL
 - run Alembic migrations
@@ -81,7 +81,7 @@ On first run, the script does this in order:
 
 1. loads `.env`
 2. creates `nginx/certbot`, `nginx/letsencrypt`, and `logs`
-3. checks for `nginx/letsencrypt/live/$DOMAIN/fullchain.pem`
+3. checks Certbot's stored certificate lineage for `$DOMAIN`
 4. if no certificate exists, requests one with Certbot using standalone mode on port `80`
 5. starts the database container
 6. runs `alembic upgrade head`
@@ -112,6 +112,7 @@ If the certificate already exists, the script skips initial certificate issuance
 - `docker compose up -d --build backend nginx`
 
 This means you can use the same command after code updates.
+The certificate check is non-interactive, so rerunning after `git pull` will not stop on a Certbot prompt for an existing matching certificate.
 
 ## Certificate Renewal
 
@@ -219,7 +220,7 @@ If `docker compose run --rm backend alembic upgrade head` fails:
 For a fresh server:
 
 ```bash
-git checkout release1.0
+git checkout releasev1.0.4
 cp .env.example .env
 bash scripts/start.sh
 ```

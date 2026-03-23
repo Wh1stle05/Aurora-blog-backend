@@ -23,15 +23,26 @@ fi
 
 mkdir -p nginx/certbot nginx/letsencrypt logs
 
-CERT_PATH="nginx/letsencrypt/live/${DOMAIN}/fullchain.pem"
-if [ ! -f "$CERT_PATH" ]; then
+certbot_has_lineage() {
+  docker run --rm \
+    -v "$ROOT_DIR/nginx/letsencrypt:/etc/letsencrypt" \
+    -v "$ROOT_DIR/nginx/certbot:/var/www/certbot" \
+    certbot/certbot certificates --cert-name "$DOMAIN" 2>/dev/null \
+    | grep -q "Certificate Name: $DOMAIN"
+}
+
+if ! certbot_has_lineage; then
   echo "No cert found for ${DOMAIN}. Issuing first certificate..."
   docker compose stop nginx || true
   docker run --rm -p 80:80 \
     -v "$ROOT_DIR/nginx/letsencrypt:/etc/letsencrypt" \
     -v "$ROOT_DIR/nginx/certbot:/var/www/certbot" \
     certbot/certbot certonly --standalone \
+      --non-interactive --keep-until-expiring \
+      --cert-name "$DOMAIN" \
       -d "$DOMAIN" --email "$CERTBOT_EMAIL" --agree-tos --no-eff-email
+else
+  echo "Existing certbot lineage found for ${DOMAIN}. Skipping first certificate issuance."
 fi
 
 docker compose up -d db

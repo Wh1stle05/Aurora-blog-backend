@@ -7,7 +7,7 @@
 `scripts/start.sh` 是这个后端项目的一键启动入口。它会依次完成以下工作：
 
 - 从 `.env` 读取环境变量
-- 检查 `DOMAIN` 对应的 HTTPS 证书是否已经存在
+- 通过 Certbot 查询 `DOMAIN` 对应证书 lineage 是否已经存在
 - 如果证书不存在，使用 Certbot 申请首个证书
 - 启动 PostgreSQL
 - 执行 Alembic 数据库迁移
@@ -81,7 +81,7 @@ bash scripts/start.sh
 
 1. 加载 `.env`
 2. 创建 `nginx/certbot`、`nginx/letsencrypt` 和 `logs`
-3. 检查 `nginx/letsencrypt/live/$DOMAIN/fullchain.pem` 是否存在
+3. 检查 Certbot 中是否已有 `$DOMAIN` 的证书 lineage
 4. 如果证书不存在，则使用 Certbot 的 standalone 模式在 `80` 端口申请证书
 5. 启动数据库容器
 6. 执行 `alembic upgrade head`
@@ -112,6 +112,7 @@ bash scripts/start.sh
 - `docker compose up -d --build backend nginx`
 
 也就是说，后续代码更新后仍然可以重复使用同一个启动命令。
+证书检查现在是非交互式的，因此 `git pull` 后再次执行脚本时，不会因为已有同名证书而卡在 Certbot 选择提示上。
 
 ## 证书续期
 
@@ -219,7 +220,7 @@ CERTBOT_EMAIL is required in .env
 首次部署服务器：
 
 ```bash
-git checkout release1.0
+git checkout releasev1.0.4
 cp .env.example .env
 bash scripts/start.sh
 ```
