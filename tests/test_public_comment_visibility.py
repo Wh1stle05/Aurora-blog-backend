@@ -34,6 +34,7 @@ def seeded_comments(db_session):
 
     post = Post(
         title="Post",
+        slug=f"post-{suffix}",
         content="Content",
         author_id=author.id,
     )

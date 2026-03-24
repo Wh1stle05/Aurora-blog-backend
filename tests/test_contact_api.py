@@ -1,11 +1,15 @@
 from app.models import Contact
 
 
-def test_contact_submission_persists_message(client, db_session):
+def test_contact_submission_persists_message(client, db_session, monkeypatch):
+    from app.api.routers import contact as contact_router
+
+    monkeypatch.setattr(contact_router, "verify_turnstile", lambda *_args, **_kwargs: True)
     payload = {
         "nickname": "Alice",
         "email": "alice@example.com",
         "content": "Hello from the contact page.",
+        "turnstile_token": "ok",
     }
 
     res = client.post("/api/contact", json=payload)
