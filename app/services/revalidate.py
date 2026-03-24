@@ -37,6 +37,12 @@ def trigger_frontend_revalidation(*, paths: list[str], slug: str | None = None) 
             headers={"User-Agent": "aurora-backend-revalidate/1.0"},
         )
         response.raise_for_status()
+        logger.info(
+            "frontend revalidation succeeded with status %s for paths=%s slug=%s",
+            response.status_code,
+            paths,
+            slug,
+        )
     except httpx.HTTPStatusError as exc:
         body = exc.response.text[:500] if exc.response is not None else ""
         logger.warning(
