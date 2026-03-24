@@ -29,7 +29,20 @@ def trigger_frontend_revalidation(*, paths: list[str], slug: str | None = None) 
         payload["slug"] = slug
 
     try:
-        response = httpx.post(url, json=payload, timeout=5, follow_redirects=True)
+        response = httpx.post(
+            url,
+            json=payload,
+            timeout=5,
+            follow_redirects=True,
+            headers={"User-Agent": "aurora-backend-revalidate/1.0"},
+        )
         response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        body = exc.response.text[:500] if exc.response is not None else ""
+        logger.warning(
+            "frontend revalidation failed with status %s: %s",
+            exc.response.status_code if exc.response is not None else "unknown",
+            body,
+        )
     except Exception as exc:
         logger.warning("frontend revalidation failed: %s", exc)
