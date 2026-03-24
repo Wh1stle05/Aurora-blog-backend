@@ -9,6 +9,7 @@ from .user import UserRead
 class CommentCreate(BaseModel):
     content: str = Field(min_length=1)
     parent_id: Optional[int] = None
+    turnstile_token: str | None = None
 
 
 class CommentRead(BaseModel):

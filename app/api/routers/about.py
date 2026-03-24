@@ -5,6 +5,7 @@ from typing import List
 from app.api.deps import get_db, require_admin
 from app.models import AboutPage, User
 from app import schemas
+from app.services.revalidate import trigger_frontend_revalidation
 
 router = APIRouter(prefix="/api/about", tags=["about"])
 
@@ -39,6 +40,7 @@ def create_about_version(
     db.add(about)
     db.commit()
     db.refresh(about)
+    trigger_frontend_revalidation(paths=["/about"])
     return about
 
 @router.delete("/{about_id}")
@@ -52,4 +54,5 @@ def delete_about_version(
         raise HTTPException(status_code=404, detail="Not found")
     db.delete(about)
     db.commit()
+    trigger_frontend_revalidation(paths=["/about"])
     return {"ok": True}
