@@ -29,7 +29,7 @@ def trigger_frontend_revalidation(*, paths: list[str], slug: str | None = None) 
         payload["slug"] = slug
 
     try:
-        response = httpx.post(url, json=payload, timeout=5)
+        response = httpx.post(url, json=payload, timeout=5, follow_redirects=True)
         response.raise_for_status()
     except Exception as exc:
         logger.warning("frontend revalidation failed: %s", exc)
