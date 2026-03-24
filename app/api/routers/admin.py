@@ -9,6 +9,7 @@ from app.models import User, Post, Comment, Reaction, PostImage, UserNicknameHis
 from app import schemas
 from app.services.storage import save_file
 from app.services.slugs import build_summary, generate_unique_slug
+from app.services.revalidate import trigger_frontend_revalidation
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -105,6 +106,7 @@ async def upload_blog_post_full(
         })
     
     db.commit()
+    trigger_frontend_revalidation(paths=["/", "/blog"], slug=new_post.slug)
     
     return {
         "ok": True, 
@@ -286,6 +288,7 @@ def update_admin_post(
     
     db.commit()
     db.refresh(post)
+    trigger_frontend_revalidation(paths=["/", "/blog"], slug=post.slug)
     return post
 
 @router.delete("/posts/{post_id}")
@@ -301,6 +304,7 @@ def delete_admin_post(
     # 软删除博文
     post.deleted_at = func.now()
     db.commit()
+    trigger_frontend_revalidation(paths=["/", "/blog"], slug=post.slug)
     return {"ok": True}
 
 @router.post("/posts/{post_id}/restore")
@@ -315,6 +319,7 @@ def restore_admin_post(
     
     post.deleted_at = None
     db.commit()
+    trigger_frontend_revalidation(paths=["/", "/blog"], slug=post.slug)
     return {"ok": True}
 
 @router.get("/posts/{post_id}/revisions")
@@ -350,6 +355,7 @@ def restore_post_version(
     
     post.content = revision.content
     db.commit()
+    trigger_frontend_revalidation(paths=["/", "/blog"], slug=post.slug)
     return {"ok": True}
 
 

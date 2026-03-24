@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import List, Dict, Optional
@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 from app.api.deps import get_db, get_current_user, get_optional_current_user
 from app.models import Comment, Post, Reaction, User
 from app import schemas
+from app.services.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/api/posts", tags=["comments"])
 
@@ -151,9 +152,15 @@ def create_comment(
     payload: schemas.CommentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    request: Request = None,
 ):
     if getattr(current_user, "is_banned", 0) == 1:
         raise HTTPException(status_code=403, detail="You have been banned from commenting")
+    if not payload.turnstile_token:
+        raise HTTPException(status_code=400, detail="缺少人机验证")
+    client_ip = request.client.host if request and request.client else None
+    if not verify_turnstile(payload.turnstile_token, client_ip):
+        raise HTTPException(status_code=403, detail="人机验证失败")
 
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
