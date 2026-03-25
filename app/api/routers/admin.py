@@ -5,13 +5,30 @@ from typing import List, Optional
 import logging
 
 from app.api.deps import get_db, require_admin
-from app.models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision
+from app.models import User, Post, Comment, Reaction, PostImage, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, PostRevision, Contact
 from app import schemas
 from app.services.storage import save_file
 from app.services.slugs import build_summary, generate_unique_slug
 from app.services.revalidate import trigger_frontend_revalidation
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+@router.get("/contacts", response_model=List[schemas.AdminContactRead])
+def list_contacts(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=200),
+):
+    contacts = (
+        db.query(Contact)
+        .order_by(Contact.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return contacts
 
 @router.get("/users/{user_id}/history/nickname", response_model=List[schemas.HistoryRead])
 def get_user_nickname_history(
