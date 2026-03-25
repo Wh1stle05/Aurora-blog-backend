@@ -3,7 +3,7 @@ from .auth import SendCodeRequest, Token
 from .post import PostCreate, PostUpdate, PostRead, PostImageRead
 from .comment import CommentCreate, CommentRead, AdminCommentRead, AdminCommentVisibilityUpdate
 from .reaction import ReactionCreate
-from .contact import ContactCreate
+from .contact import ContactCreate, AdminContactRead
 from .about import AboutRead, AboutCreate
 from .tag import TagRead, TagCreate
 
@@ -26,6 +26,7 @@ __all__ = [
     "AdminCommentVisibilityUpdate",
     "ReactionCreate",
     "ContactCreate",
+    "AdminContactRead",
     "AboutRead",
     "AboutCreate",
     "TagRead",
