@@ -2,6 +2,21 @@
 
 架构：**Vercel Functions (FastAPI) + Neon Postgres + Cloudflare R2 + Resend + Turnstile**
 
+## 本次部署实况（2026-09-16）
+
+| 项 | 值 |
+| --- | --- |
+| Vercel 项目 | `wh1stle05s-projects/aurora-blog-backend`（GitHub 生产分支 `master`） |
+| 函数区域 | `sin1`（新加坡，来自 `vercel.json` 的 `regions`） |
+| 数据库 | Neon `lingering-glade-73613632` / branch `production`，区域 `ap-southeast-1`（AWS 新加坡） |
+| 迁移 | 已 `alembic upgrade head`（先 `merge` 了 refresh_tokens / post_slug 两个 head） |
+| 对象存储 | Cloudflare R2 bucket `blog`，公开域 `cdn.aurorablog.me` |
+| 反滥用定时入口 | `GET /api/system/cron/monitor`（`CRON_SECRET` 校验） |
+| 自定义域 | `api.aurorablog.me` 已加到项目，**待 Cloudflare DNS 指向 Vercel**（`CNAME cname.vercel-dns.com` 或 `A 76.76.21.21`） |
+
+> Neon 上不需要执行 `neon.ts` / `neon deploy` —— 那是把应用部署到 Neon 平台的流程；
+> 本项目跑在 Vercel，只需要 Neon 的连接串。
+
 Vercel 的 Python 运行时支持 ASGI 零配置部署：仓库根目录下的 `app/main.py`
 里名为 `app` 的 `FastAPI` 实例会被自动识别，不需要 `vercel.json` 里的
 `builds`/`routes`，也不需要 `api/index.py`。
