@@ -8,10 +8,35 @@ import traceback
 
 from app.db.base import Base
 from app.db.session import engine
-from app.api.routers import auth, posts, comments, reactions, contact, admin, about, tags, stats, monitor
+from app.api.routers import (
+    auth,
+    posts,
+    comments,
+    reactions,
+    contact,
+    admin,
+    about,
+    tags,
+    stats,
+    monitor,
+    system,
+)
 
 # --- 1. 环境与日志配置 ---
-IS_VERCEL = "VERCEL" in os.environ
+# Vercel 会自动注入 VERCEL=1；自行部署在 Render/Cloud Run 等平台时可显式设置 SERVERLESS=1
+IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("SERVERLESS"))
+
+
+def _system_monitor_enabled() -> bool:
+    """是否启动常驻系统监控循环。
+
+    serverless 环境没有稳定长驻进程，默认关闭；改由定时任务调用
+    /api/system/cron/monitor。可用 ENABLE_SYSTEM_MONITOR 强制开/关。
+    """
+    explicit = os.getenv("ENABLE_SYSTEM_MONITOR")
+    if explicit is None or not explicit.strip():
+        return not IS_SERVERLESS
+    return explicit.strip().lower() in {"1", "true", "yes", "on"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,7 +79,14 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     # 数据库结构现在由 Alembic 统一管理，不再在此处手动执行 SQL 或 create_all
-    asyncio.create_task(monitor.monitor_system())
+    if _system_monitor_enabled():
+        asyncio.create_task(monitor.monitor_system())
+        logger.info("system monitor loop started")
+    else:
+        logger.info(
+            "system monitor loop disabled (serverless); "
+            "schedule /api/system/cron/monitor instead"
+        )
 
 
 @app.get("/")
@@ -88,3 +120,4 @@ app.include_router(admin.router)
 app.include_router(about.router)
 app.include_router(tags.router)
 app.include_router(stats.router)
+app.include_router(system.router)
