@@ -8,3 +8,4 @@ uploads/
 .vercel/
 .vercel
 .env*
+.neon
