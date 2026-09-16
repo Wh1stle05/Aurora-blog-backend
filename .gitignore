@@ -5,3 +5,4 @@ venv/
 uploads/
 .pytest_cache/
 .worktrees/
+.vercel/
