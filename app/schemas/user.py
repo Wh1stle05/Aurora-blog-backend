@@ -32,6 +32,11 @@ class EmailUpdate(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 
 
+class PasswordUpdate(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
 class HistoryRead(BaseModel):
     id: int
     old_value: str
