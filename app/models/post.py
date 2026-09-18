@@ -16,6 +16,8 @@ class Post(Base):
     view_count = Column(Integer, default=0, nullable=False)
     is_visible = Column(SmallInteger, default=1, nullable=False)  # 1 为可见，0 为隐藏
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    # 展示用的发布时间（可手动指定）。为空时展示时间使用 created_at（真实上传时间）。
+    published_at = Column(DateTime(timezone=True), nullable=True, index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

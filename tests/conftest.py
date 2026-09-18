@@ -48,6 +48,14 @@ def override_get_db():
 main.app.dependency_overrides[deps.get_db] = override_get_db
 
 
+@pytest.fixture(autouse=True)
+def clean_database():
+    """每个测试都从干净的表结构开始：避免测试之间互相污染（共享同一个 sqlite 内存库）。"""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
 @pytest.fixture()
 def client():
     return TestClient(main.app)

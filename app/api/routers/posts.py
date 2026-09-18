@@ -11,6 +11,15 @@ from app.services.slugs import build_summary
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
+
+# 页面展示时间：优先用手动设置的 published_at，否则用真实上传时间 created_at
+def _display_time_expr():
+    return func.coalesce(Post.published_at, Post.created_at)
+
+
+def _display_time(post: Post):
+    return post.published_at or post.created_at
+
 def _reaction_counts(db: Session, target_type: str, target_ids: list[int]) -> dict[int, dict[str, int]]:
     if not target_ids:
         return {}
@@ -48,7 +57,7 @@ def list_posts(
         query = query.filter(or_(*tag_filters))
 
     if sort_by == "created_at":
-        query = query.order_by(Post.created_at.desc())
+        query = query.order_by(_display_time_expr().desc())
     elif sort_by == "view_count":
         query = query.order_by(Post.view_count.desc())
     
@@ -77,6 +86,7 @@ def list_posts(
                 tags=post.tags,
                 view_count=post.view_count,
                 created_at=post.created_at,
+                published_at=post.published_at,
                 updated_at=post.updated_at,
                 author=post.author,
                 like_count=likes,
@@ -121,11 +131,11 @@ def list_posts_paginated(
             .subquery()
         )
         query = query.outerjoin(likes_subquery, Post.id == likes_subquery.c.target_id)
-        query = query.order_by(func.coalesce(likes_subquery.c.likes, 0).desc(), Post.created_at.desc())
+        query = query.order_by(func.coalesce(likes_subquery.c.likes, 0).desc(), _display_time_expr().desc())
     elif sort_by == "view_count":
-        query = query.order_by(Post.view_count.desc(), Post.created_at.desc())
+        query = query.order_by(Post.view_count.desc(), _display_time_expr().desc())
     else:
-        query = query.order_by(Post.created_at.desc())
+        query = query.order_by(_display_time_expr().desc())
 
     total = query.count()
     posts_subset = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -152,7 +162,9 @@ def list_posts_paginated(
             "cover_image": post.cover_image,
             "tags": post.tags,
             "author": post.author.nickname,
-            "created_at": post.created_at,
+            "created_at": _display_time(post),
+            "uploaded_at": post.created_at,
+            "published_at": post.published_at,
             "updated_at": post.updated_at,
             "view_count": post.view_count,
             "like_count": like_count,
@@ -223,6 +235,7 @@ def get_post(
         tags=post.tags,
         view_count=post.view_count,
         created_at=post.created_at,
+        published_at=post.published_at,
         updated_at=post.updated_at,
         author=post.author,
         like_count=reaction_map.get(post.id, {}).get("likes", 0),

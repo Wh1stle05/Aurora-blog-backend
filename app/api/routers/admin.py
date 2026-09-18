@@ -10,8 +10,14 @@ from app import schemas
 from app.services.storage import save_file
 from app.services.slugs import build_summary, generate_unique_slug
 from app.services.revalidate import trigger_frontend_revalidation
+from app.utils.datetimes import parse_optional_datetime
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+# 展示时间：published_at 优先，否则为上传时间 created_at
+def _display_time_expr():
+    return func.coalesce(Post.published_at, Post.created_at)
 
 
 @router.get("/contacts", response_model=List[schemas.AdminContactRead])
@@ -65,6 +71,7 @@ async def upload_blog_post_full(
     slug: Optional[str] = Form(None),
     summary: Optional[str] = Form(None),
     cover_image: Optional[str] = Form(None),
+    published_at: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
@@ -88,6 +95,11 @@ async def upload_blog_post_full(
         content = "\n".join(lines[1:])
     
     # 2. 创建博文记录
+    try:
+        display_time = parse_optional_datetime(published_at)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     new_post = Post(
         title=title,
         slug=generate_unique_slug(db, title=title, preferred_slug=slug),
@@ -95,7 +107,8 @@ async def upload_blog_post_full(
         summary=summary or build_summary(content),
         cover_image=cover_image,
         author_id=_admin.id,
-        tags=tags # 使用传入的标签，而不是硬编码的 'uploaded'
+        tags=tags,  # 使用传入的标签，而不是硬编码的 'uploaded'
+        published_at=display_time,  # 留空 = 使用上传时间 created_at
     )
     db.add(new_post)
     db.flush() # 获取新生成的 post.id
@@ -239,7 +252,7 @@ def list_admin_posts(
         query = query.filter(Post.tags.contains(tag))
 
     if sort_by == "created_at":
-        query = query.order_by(Post.created_at.desc())
+        query = query.order_by(_display_time_expr().desc())
     elif sort_by == "view_count":
         query = query.order_by(Post.view_count.desc())
     # like_count 排序稍复杂，目前暂不支持后端直接按聚合字段排，除非预存
@@ -302,7 +315,10 @@ def update_admin_post(
         post.summary = payload.summary
     if payload.cover_image is not None:
         post.cover_image = payload.cover_image
-    
+    # 显式传 null 表示清空自定义展示时间，回到上传时间
+    if "published_at" in payload.model_fields_set:
+        post.published_at = payload.published_at
+
     db.commit()
     db.refresh(post)
     trigger_frontend_revalidation(paths=["/", "/blog"], slug=post.slug)

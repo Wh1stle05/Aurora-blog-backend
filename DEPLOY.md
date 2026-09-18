@@ -108,3 +108,34 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 - **仅限非商业用途**（个人博客可以；挂广告/接单需要 Pro）
 - Neon 免费档：0.5 GB 存储 / 100 CU·h per project / 自动 scale-to-zero，
   超限当月挂起
+
+## 6. 文章「上传时间 / 显示时间」
+
+`posts` 表有两个时间：
+
+| 字段 | 含义 |
+| --- | --- |
+| `created_at` | 真实上传时间，新建文章时自动写入，接口里也会以 `uploaded_at` 返回 |
+| `published_at` | **页面显示时间**，可以为空；留空时显示时间就用上传时间 |
+
+接口约定：
+
+- `GET /api/posts/...` 返回的 `created_at` = `published_at` 或 `created_at`（即页面展示时间），
+  这样前台不用改代码；`uploaded_at` 始终是真实上传时间
+- 列表按「展示时间」倒序，所以改大某篇的时间就能把它顶到前面
+- 后台编辑：`PUT /api/admin/posts/{id}`，`{"published_at": "2026-03-25T14:42:09Z"}` 设置，
+  传 `null` 清空（回到上传时间）；发布新文章时表单里也可以直接指定
+- 管理后台「文章列表 → 编辑」和「投稿发布」都有这个字段（datetime-local，按浏览器本地时间选，
+  提交时转成 ISO）
+
+## 7. 从 Markdown 批量导入文章
+
+```bash
+DATABASE_URL="<Neon 连接串>" python scripts/import_markdown_posts.py \
+  --manifest import.json --dry-run   # 先干跑
+DATABASE_URL="<Neon 连接串>" python scripts/import_markdown_posts.py --manifest import.json
+```
+
+manifest 格式见 `scripts/import_markdown_posts.py` 顶部注释（支持指定标题、slug、标签、
+上传时间/显示时间、阅读数、正文替换规则、附件图片关联）。默认用文件 mtime 作为上传时间，
+所以从本地 Markdown 恢复的文章能保留原来的时间感。
