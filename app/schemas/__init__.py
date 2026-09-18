@@ -1,4 +1,4 @@
-from .user import UserCreate, UserRead, NicknameUpdate, EmailUpdate, HistoryRead, AdminUserRead
+from .user import UserCreate, UserRead, NicknameUpdate, EmailUpdate, PasswordUpdate, HistoryRead, AdminUserRead
 from .auth import SendCodeRequest, Token
 from .post import PostCreate, PostUpdate, PostRead, PostImageRead
 from .comment import CommentCreate, CommentRead, AdminCommentRead, AdminCommentVisibilityUpdate
@@ -12,6 +12,7 @@ __all__ = [
     "UserRead",
     "NicknameUpdate",
     "EmailUpdate",
+    "PasswordUpdate",
     "HistoryRead",
     "AdminUserRead",
     "SendCodeRequest",
