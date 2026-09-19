@@ -64,15 +64,23 @@ def test_send_code_success_uses_resend_from(client, monkeypatch):
     assert sent["from"] == "Aurora Blog <no-reply@aurorablog.me>"
 
 
-def test_send_code_resend_failure_returns_500(client, monkeypatch):
+def test_send_code_resend_failure_returns_502_with_reason(client, monkeypatch):
     from app.api.routers import auth as auth_router
 
     monkeypatch.setattr(auth_router, "verify_turnstile", lambda *_: True)
     monkeypatch.setenv("RESEND_API_KEY", "testkey")
 
+    class FakeResendError(Exception):
+        error_type = "validation_error"
+        code = 400
+        message = "API key is invalid"
+        suggested_action = None
+
     def fake_send(_payload):
-        raise RuntimeError("boom")
+        raise FakeResendError("API key is invalid")
 
     monkeypatch.setattr(auth_router.resend.Emails, "send", fake_send)
     res = client.post("/api/auth/send-code", json={"email": "a4@b.com", "turnstile_token": "ok"})
-    assert res.status_code == 500
+    # 502：上游邮件服务拒绝，且把原因带出来，方便前端/运维定位
+    assert res.status_code == 502
+    assert "API key is invalid" in res.json()["detail"]

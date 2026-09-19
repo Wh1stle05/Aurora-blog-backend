@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import random
 import resend
 import os
+import logging
 
 from app import schemas
 from app.models import User, VerificationCode, UserNicknameHistory, UserEmailHistory, UserAvatarHistory, RefreshToken
@@ -19,12 +20,26 @@ from app.services.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+logger = logging.getLogger("blog-api.auth")
+
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 resend.api_key = RESEND_API_KEY
 
 # 验证码有效期与重发间隔（注册 / 改邮箱 / 改密码共用）
 CODE_TTL_MINUTES = 10
 RESEND_COOLDOWN_SECONDS = 60
+
+
+def _describe_resend_error(exc: Exception) -> str:
+    """把 Resend SDK 抛出的异常翻译成一句人能看懂的原因。"""
+    parts = []
+    for attr in ("error_type", "code", "message", "suggested_action"):
+        value = getattr(exc, attr, None)
+        if value:
+            parts.append(str(value))
+    if not parts:
+        parts.append(f"{type(exc).__name__}: {exc}")
+    return " | ".join(parts)[:300]
 
 
 def _send_code_email(
@@ -58,8 +73,11 @@ def _send_code_email(
                 </div>
             """,
         })
-    except Exception:
-        raise HTTPException(status_code=500, detail="邮件发送失败")
+    except Exception as exc:
+        # 把服务商返回的原因带到日志和响应里，否则前端只能看到一句「邮件发送失败」
+        reason = _describe_resend_error(exc)
+        logger.error("Resend 发送验证码失败：to=%s from=%s reason=%s", to_email, resend_from, reason)
+        raise HTTPException(status_code=502, detail=f"邮件发送失败：{reason}")
 
 
 def _enforce_resend_cooldown(db: Session, email: str) -> None:
